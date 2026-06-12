@@ -1,0 +1,2 @@
+# Convox is built with Python standard library only.
+# Requires Python 3.10 or newer.
