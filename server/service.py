@@ -17,6 +17,7 @@ from scheduler.scheduled_broadcast import ScheduledBroadcastRunner
 from server.connection_manager import ConnectionManager
 from server.session_manager import SessionManager
 from storage.storage_manager import StorageManager
+from voice.voice_room import VoiceRoomManager
 from utils.helper import timestamp
 from utils.logger import get_logger
 
@@ -34,6 +35,7 @@ class ConvoxService:
         self.scheduler = ScheduledBroadcastRunner(self.database, self.dispatch_scheduled_broadcast)
         self.session_manager = SessionManager(self.database)
         self.storage_manager = StorageManager()
+        self.voice_room_manager = VoiceRoomManager()
         self.user_rooms: Dict[str, str] = {}
         self.active_sessions: Dict[str, str] = {}
         self.lock = threading.RLock()
@@ -96,6 +98,12 @@ class ConvoxService:
                 self.handle_image_upload(username, packet)
             elif packet_type == PacketType.RECONNECT.value:
                 self.handle_reconnect(username, packet)
+            elif packet_type == PacketType.VOICE_START.value:
+                self.handle_voice_start(username, packet)
+            elif packet_type == PacketType.VOICE_STOP.value:
+                self.handle_voice_stop(username, packet)
+            elif packet_type == PacketType.VOICE_STATUS.value:
+                self.handle_voice_status(username, packet)
             else:
                 self.send_error(username, f"Unknown packet type: {packet_type}")
         except ValueError as exc:
@@ -409,5 +417,54 @@ class ConvoxService:
             self.database.remove_room_member(current_room, username)
             self.status_manager.remove(username)
             self.user_rooms.pop(username, None)
+            voice_room = self.voice_room_manager.user_voice_room(username)
+            if voice_room:
+                self.voice_room_manager.remove_from_room(voice_room, username)
             self.broadcast_system(f"{username} disconnected.", room=current_room)
             self.send_online_users()
+
+    def handle_voice_start(self, username: str, packet: Dict[str, Any]) -> None:
+        room = str(packet.get("room", self.user_rooms.get(username, "global"))).strip()
+        udp_port = int(packet.get("udp_port", 0))
+        if not room or udp_port <= 0:
+            raise ValueError("room and udp_port are required for VOICE_START.")
+        if not self.room_manager.is_room_member(room, username):
+            raise ValueError(f"You are not a member of room {room}.")
+        old_voice_room = self.voice_room_manager.user_voice_room(username)
+        if old_voice_room and old_voice_room != room:
+            self.voice_room_manager.remove_from_room(old_voice_room, username)
+            self.broadcast_system(f"{username} left voice in {old_voice_room}.", room=old_voice_room)
+        self.voice_room_manager.add_to_room(room, username, udp_port)
+        self.send_system(username, f"Joined voice in room '{room}'.", room=room)
+        self.broadcast_system(f"{username} joined voice.", room=room)
+        self.logger.info("%s started voice in %s (UDP port %d)", username, room, udp_port)
+
+    def handle_voice_stop(self, username: str, packet: Dict[str, Any]) -> None:
+        room = str(packet.get("room", "")).strip()
+        if not room:
+            room = self.voice_room_manager.user_voice_room(username)
+        if room:
+            self.voice_room_manager.remove_from_room(room, username)
+            self.send_system(username, f"Left voice in room '{room}'.", room=room)
+            self.broadcast_system(f"{username} left voice.", room=room)
+            self.logger.info("%s stopped voice in %s", username, room)
+
+    def handle_voice_status(self, username: str, packet: Dict[str, Any]) -> None:
+        room = str(packet.get("room", "")).strip()
+        status = str(packet.get("status", "")).strip()
+        if not room or not status:
+            raise ValueError("room and status are required for VOICE_STATUS.")
+        voice_room = self.voice_room_manager.get_room(room)
+        if not voice_room:
+            raise ValueError(f"No active voice session in {room}.")
+        if status == "muted":
+            voice_room.set_muted(username, True)
+            self.broadcast_system(f"{username} is muted.", room=room)
+        elif status == "unmuted":
+            voice_room.set_muted(username, False)
+            self.broadcast_system(f"{username} is unmuted.", room=room)
+        elif status == "speaking":
+            voice_room.set_speaking(username, True)
+        elif status == "idle":
+            voice_room.set_speaking(username, False)
+
