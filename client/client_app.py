@@ -6,6 +6,7 @@ from typing import Optional
 
 from client.config import SERVER_HOST, SERVER_PORT
 from protocol.packet import PacketType, build_packet, receive_packet
+from voice.udp_client import UDPVoiceClient
 from utils.logger import get_logger
 
 
@@ -20,6 +21,9 @@ class ConvoxClient:
         self.receiver_thread: Optional[threading.Thread] = None
         self.logger = get_logger("ConvoxClient")
         self.running = False
+        self.voice_client: Optional[UDPVoiceClient] = None
+        self.muted = False
+        self.in_voice_room: Optional[str] = None
 
     def connect(self) -> None:
         self.socket.connect((self.server_host, self.server_port))
@@ -171,6 +175,18 @@ class ConvoxClient:
             self.send_file(parts[1])
         elif command == "/reconnect" and self.session_token:
             self.send_packet(PacketType.RECONNECT, session_token=self.session_token)
+        elif command == "/voicejoin":
+            self.voice_join()
+        elif command == "/voiceleave":
+            self.voice_leave()
+        elif command == "/mute":
+            self.set_mute(True)
+        elif command == "/unmute":
+            self.set_mute(False)
+        elif command == "/voiceusers":
+            print("[VOICE] Voice users in current room (requires /voicejoin first)")
+        elif command == "/ptt":
+            print("[PTT] Push-to-talk not yet implemented")
         elif command == "/quit":
             self.running = False
             self.socket.close()
@@ -219,6 +235,36 @@ class ConvoxClient:
         except Exception as exc:
             print(f"Error sending file: {exc}")
 
+    def voice_join(self) -> None:
+        if self.in_voice_room:
+            print(f"Already in voice room: {self.in_voice_room}")
+            return
+        if not self.voice_client:
+            self.voice_client = UDPVoiceClient(self.username, self.server_host, 9001)
+            self.voice_client.start()
+        self.voice_client.join_room(self.current_room)
+        self.in_voice_room = self.current_room
+        udp_port = self.voice_client.local_port
+        self.send_packet(PacketType.VOICE_START, room=self.current_room, udp_port=udp_port)
+        print(f"[VOICE] Joined voice in {self.current_room} (UDP port {udp_port})")
+
+    def voice_leave(self) -> None:
+        if not self.in_voice_room:
+            print("Not in a voice room")
+            return
+        self.send_packet(PacketType.VOICE_STOP, room=self.in_voice_room)
+        if self.voice_client:
+            self.voice_client.leave_room()
+        self.in_voice_room = None
+        print(f"[VOICE] Left voice room")
+
+    def set_mute(self, muted: bool) -> None:
+        self.muted = muted
+        if self.in_voice_room:
+            status = "muted" if muted else "unmuted"
+            self.send_packet(PacketType.VOICE_STATUS, room=self.in_voice_room, status=status)
+        print(f"[VOICE] You are now {'muted' if muted else 'unmuted'}")
+
     def print_help(self) -> None:
         print("Available commands:")
         print("  /help                Show this help")
@@ -239,5 +285,11 @@ class ConvoxClient:
         print("  /status <status>     Update your presence status (ONLINE, OFFLINE, IN_ROOM, DO_NOT_DISTURB)")
         print("  /sendimage <path>    Upload an image to current room")
         print("  /sendfile <path>     Upload a file to current room (chunked)")
+        print("  /voicejoin           Join voice in current room")
+        print("  /voiceleave          Leave voice room")
+        print("  /mute                Mute your microphone")
+        print("  /unmute              Unmute your microphone")
+        print("  /voiceusers          List users in voice")
+        print("  /ptt                 Toggle push-to-talk (experimental)")
         print("  /reconnect           Reconnect using session token")
         print("  /quit                Disconnect from the server")

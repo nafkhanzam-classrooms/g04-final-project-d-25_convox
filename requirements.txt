@@ -1,2 +1,9 @@
-# Convox is built with Python standard library only.
-# Requires Python 3.10 or newer.
+# Convox Core: Python standard library only (Python 3.10+)
+# GUI Frontend: Requires PyQt6
+# Audio: Optional PyAudio for voice (graceful fallback if unavailable)
+
+# GUI
+PyQt6==6.7.0
+
+# Audio (optional)
+PyAudio>=0.2.13
