@@ -1,5 +1,6 @@
 import base64
 import threading
+import uuid
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
 
@@ -86,6 +87,8 @@ class ConvoxService:
                 self.handle_schedule_broadcast(username, packet)
             elif packet_type == PacketType.UPDATE_STATUS.value:
                 self.handle_status_update(username, packet)
+            elif packet_type == PacketType.MATCHMAKE.value:
+                self.handle_matchmake(username)
             elif packet_type == PacketType.FILE_START.value:
                 self.handle_file_start(username, packet)
             elif packet_type == PacketType.FILE_CHUNK.value:
@@ -217,6 +220,49 @@ class ConvoxService:
             status = UserStatus.ONLINE
         self.status_manager.set_status(username, status)
         self.send_system(username, f"Your status is now {status.value}.")
+
+    def handle_matchmake(self, username: str) -> None:
+        match_status = self.matchmaker.enqueue(username, self._finish_match)
+        if match_status == "already_queued":
+            self.send_system(username, "You are already in the matchmaking queue.")
+            return
+        if match_status == "queued":
+            self.send_system(username, "You have entered the matchmaking queue. Waiting for a match...")
+            return
+        self.send_system(username, "Match found. Preparing room...")
+
+    def _finish_match(self, participants: list[str]) -> None:
+        room_name = f"match_{uuid.uuid4().hex[:8]}"
+        owner = participants[0]
+        if not self.room_manager.create_room(room_name, owner, visibility="private", max_capacity=10, invite_only=True):
+            self.logger.error("Failed to create match room %s", room_name)
+            return
+
+        for participant in participants:
+            self.room_manager.invite_user(room_name, participant)
+            self.database.invite_room_user(room_name, owner, participant)
+
+        for participant in participants:
+            previous_room = self.user_rooms.get(participant, "global")
+            if previous_room != room_name:
+                self.leave_room(participant, previous_room, silent=True)
+            room, error = self.room_manager.join_room(room_name, participant)
+            self.user_rooms[participant] = room_name
+            if error:
+                self.logger.warning("Failed to join %s to match room %s: %s", participant, room_name, error)
+                continue
+            self.send_packet(
+                participant,
+                PacketType.MATCH_FOUND,
+                room=room_name,
+                participants=[p for p in participants if p != participant],
+                message=f"Matched into room {room_name} with {', '.join([p for p in participants if p != participant])}.",
+            )
+            self.send_system(participant, f"Match found! You are now in {room_name}.", room=room_name)
+
+    def send_room_history(self, username: str, room_name: str) -> None:
+        history = self.database.fetch_room_messages(room_name)
+        self.send_packet(username, PacketType.ROOM_HISTORY, room=room_name, history=history)
 
     def handle_image_upload(self, username: str, packet: Dict[str, Any]) -> None:
         filename = str(packet.get("filename", "")).strip()
@@ -404,10 +450,12 @@ class ConvoxService:
     def unregister_client(self, username: str) -> None:
         with self.lock:
             self.connections.remove(username)
+            self.matchmaker.leave_queue(username)
             current_room = self.user_rooms.get(username, "global")
             self.room_manager.leave_room(current_room, username)
             self.database.remove_room_member(current_room, username)
             self.status_manager.remove(username)
+            self.session_manager.end_session(username)
             self.user_rooms.pop(username, None)
             self.broadcast_system(f"{username} disconnected.", room=current_room)
             self.send_online_users()

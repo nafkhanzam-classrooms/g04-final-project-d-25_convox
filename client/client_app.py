@@ -69,6 +69,10 @@ class ConvoxClient:
             filename = packet.get("filename", "unknown")
             filesize = packet.get("filesize", 0)
             print(f"[{timestamp}] [FILE] {sender} sent: {filename} ({filesize} bytes)")
+        elif packet_type == PacketType.MATCH_FOUND.value:
+            room = packet.get("room", "unknown")
+            participants = packet.get("participants", [])
+            print(f"[{timestamp}] [MATCH] Join room {room} with {', '.join(participants)}")
         elif packet_type == PacketType.TRANSFER_PROGRESS.value:
             transfer_id = packet.get("transfer_id", "unknown")
             progress = packet.get("progress", 0)

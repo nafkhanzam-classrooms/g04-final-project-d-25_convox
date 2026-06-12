@@ -1,2 +1,24 @@
 2026-06-12 10:30:34 [INFO] Created session fd17ded1-dc77-4a0b-8525-c347370cb6a7 for alice in room global
 2026-06-12 10:30:34 [INFO] Restored session token fd17ded1-dc77-4a0b-8525-c347370cb6a7 for alice
+2026-06-12 10:43:04 [INFO] Convox server listening on 0.0.0.0:9000
+2026-06-12 10:45:49 [INFO] Connected to server at 127.0.0.1:9000
+2026-06-12 10:45:49 [INFO] New connection from 127.0.0.1:60360
+2026-06-12 10:51:19 [INFO] Created session 7eb34686-8e8c-438e-94ad-3f64cd24d669 for a in room global
+2026-06-12 10:51:19 [ERROR] Error handling client ('127.0.0.1', 60360): ConvoxService.send_packet() got multiple values for argument 'username'
+Traceback (most recent call last):
+  File "d:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\server\server.py", line 74, in handle_client
+    self.service.send_packet(username, PacketType.SESSION_ACK, username=username, session_token=session_token, room=self.service.user_rooms[username])
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: ConvoxService.send_packet() got multiple values for argument 'username'
+2026-06-12 10:51:19 [INFO] Server closed connection
+2026-06-12 10:52:43 [INFO] Convox server listening on 0.0.0.0:9000
+2026-06-12 10:52:53 [INFO] Connected to server at 127.0.0.1:9000
+2026-06-12 10:52:53 [INFO] New connection from 127.0.0.1:59357
+2026-06-12 10:52:57 [INFO] Created session d0cc1a4e-99a8-4387-b304-98f4e219e5c7 for /help in room global
+2026-06-12 10:52:57 [ERROR] Error handling client ('127.0.0.1', 59357): ConvoxService.send_packet() got multiple values for argument 'username'
+Traceback (most recent call last):
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\server\server.py", line 74, in handle_client
+    self.service.send_packet(username, PacketType.SESSION_ACK, username=username, session_token=session_token, room=self.service.user_rooms[username])
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: ConvoxService.send_packet() got multiple values for argument 'username'
+2026-06-12 10:52:57 [INFO] Server closed connection
