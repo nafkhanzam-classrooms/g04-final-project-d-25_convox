@@ -56,7 +56,7 @@ class ConvoxServer:
                 self.service.user_rooms[username] = room_name
                 self.service.connections.add(username, conn)
                 self.service.register_client(username, skip_welcome=True)
-                self.service.send_packet(username, PacketType.SESSION_ACK, username=username, session_token=session_token, room=room_name)
+                self.service.send_packet(username, PacketType.SESSION_ACK, session_token=session_token, room=room_name)
                 self.logger.info("User reconnected: %s (%s:%s)", username, *address)
             elif packet_type == PacketType.LOGIN.value:
                 username = str(packet.get("sender", "")).strip()
@@ -71,7 +71,7 @@ class ConvoxServer:
                 self.service.connections.add(username, conn)
                 self.service.register_client(username)
                 session_token = self.service.session_manager.create_session(username, self.service.user_rooms[username])
-                self.service.send_packet(username, PacketType.SESSION_ACK, username=username, session_token=session_token, room=self.service.user_rooms[username])
+                self.service.send_packet(username, PacketType.SESSION_ACK, session_token=session_token, room=self.service.user_rooms[username])
                 self.logger.info("User logged in: %s (%s:%s)", username, *address)
             else:
                 self.send_error(conn, "First packet must be LOGIN or RECONNECT.")

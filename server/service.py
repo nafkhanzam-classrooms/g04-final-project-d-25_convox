@@ -47,7 +47,9 @@ class ConvoxService:
         self.status_manager.set_status(username, UserStatus.ONLINE)
         if username not in self.user_rooms:
             self.user_rooms[username] = "global"
-        self.room_manager.join_room(username, self.user_rooms[username])
+        room, error = self.room_manager.join_room(self.user_rooms[username], username)
+        if error:
+            raise ValueError(f"Failed to join room {self.user_rooms[username]}: {error}")
         if not skip_welcome:
             self.send_system(username, f"Welcome to Convox, {username}!", room=self.user_rooms[username])
             self.broadcast_system(f"{username} joined {self.user_rooms[username]}.", room=self.user_rooms[username])
@@ -116,7 +118,7 @@ class ConvoxService:
             self.send_error(username, "Internal server error")
 
     def handle_room_message(self, username: str, packet: Dict[str, Any]) -> None:
-        room = str(packet.get("room", self.user_rooms.get(username, "global"))).strip()
+        room = self.user_rooms.get(username, "global")
         message = str(packet.get("message", "")).strip()
         if not message:
             raise ValueError("Cannot send an empty message.")
@@ -157,7 +159,7 @@ class ConvoxService:
         if not room_name:
             raise ValueError("Room name is required to join.")
         old_room = self.user_rooms.get(username, "global")
-        room, error = self.room_manager.join_room(username, room_name, password=password)
+        room, error = self.room_manager.join_room(room_name, username, password=password)
         if error:
             raise ValueError(error)
         self.user_rooms[username] = room_name
@@ -168,10 +170,10 @@ class ConvoxService:
         self.send_room_history(username, room_name)
 
     def handle_leave_room(self, username: str, packet: Dict[str, Any]) -> None:
-        room_name = str(packet.get("room", self.user_rooms.get(username, "global"))).strip()
-        if room_name == "global":
+        current_room = self.user_rooms.get(username, "global")
+        if current_room == "global":
             raise ValueError("Cannot leave the global room.")
-        self.leave_room(username, room_name, silent=False)
+        self.leave_room(username, current_room, silent=False)
         self.join_room(username, "global", announce=False)
 
     def handle_invite_user(self, username: str, packet: Dict[str, Any]) -> None:
@@ -255,10 +257,10 @@ class ConvoxService:
             if previous_room != room_name:
                 self.leave_room(participant, previous_room, silent=True)
             room, error = self.room_manager.join_room(room_name, participant)
-            self.user_rooms[participant] = room_name
             if error:
                 self.logger.warning("Failed to join %s to match room %s: %s", participant, room_name, error)
                 continue
+            self.user_rooms[participant] = room_name
             self.send_packet(
                 participant,
                 PacketType.MATCH_FOUND,
@@ -444,7 +446,7 @@ class ConvoxService:
             self.broadcast_system(f"{username} left {room_name}.", room=room_name)
 
     def join_room(self, username: str, room_name: str, password: Optional[str] = None, announce: bool = True) -> None:
-        room, error = self.room_manager.join_room(username, room_name, password=password)
+        room, error = self.room_manager.join_room(room_name, username, password=password)
         if error:
             raise ValueError(error)
         self.user_rooms[username] = room_name

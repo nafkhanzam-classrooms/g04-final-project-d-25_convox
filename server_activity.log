@@ -22,3 +22,239 @@ Traceback (most recent call last):
     ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 TypeError: ConvoxService.send_packet() got multiple values for argument 'username'
 2026-06-12 10:52:57 [INFO] Server closed connection
+2026-06-13 17:28:59 [INFO] Convox server listening on 0.0.0.0:9000
+2026-06-13 17:29:11 [INFO] Connected to server at 127.0.0.1:9000
+2026-06-13 17:29:11 [INFO] New connection from 127.0.0.1:52387
+2026-06-13 17:30:18 [INFO] Created session 14e2bfd0-ce6e-4819-be8b-38955bdede5f for aqil in room global
+2026-06-13 17:30:18 [INFO] User logged in: aqil (127.0.0.1:52387)
+2026-06-13 17:31:33 [INFO] Connected to server at 127.0.0.1:9000
+2026-06-13 17:31:33 [INFO] New connection from 127.0.0.1:52417
+2026-06-13 17:31:39 [INFO] Created session e6bc6d5a-69f4-4ba9-9c4a-5526befcc413 for hanif in room global
+2026-06-13 17:31:39 [INFO] User logged in: hanif (127.0.0.1:52417)
+2026-06-13 17:32:09 [INFO] Friend request sent from aqil to hanif
+2026-06-13 17:32:58 [INFO] hanif accepted friend request from aqil
+2026-06-13 17:33:13 [ERROR] Error handling client ('127.0.0.1', 52417): [WinError 10054] An existing connection was forcibly closed by the remote host
+Traceback (most recent call last):
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\server\server.py", line 82, in handle_client
+    packet = receive_packet(conn)
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\protocol\packet.py", line 66, in receive_packet
+    header = recvall(sock, 4)
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\protocol\packet.py", line 58, in recvall
+    packet = sock.recv(length - len(data))
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+2026-06-13 17:33:13 [INFO] Ended session e6bc6d5a-69f4-4ba9-9c4a-5526befcc413 for hanif
+2026-06-13 17:38:40 [INFO] Connected to server at 127.0.0.1:9000
+2026-06-13 17:38:40 [INFO] New connection from 127.0.0.1:56497
+2026-06-13 17:38:42 [INFO] Created session ce583d7d-2b9b-416c-96b6-5d4ccd5e5883 for hanif in room global
+2026-06-13 17:38:42 [INFO] User logged in: hanif (127.0.0.1:56497)
+2026-06-13 17:39:58 [ERROR] Error handling client ('127.0.0.1', 52387): [WinError 10054] An existing connection was forcibly closed by the remote host
+Traceback (most recent call last):
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\server\server.py", line 82, in handle_client
+    packet = receive_packet(conn)
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\protocol\packet.py", line 66, in receive_packet
+    header = recvall(sock, 4)
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\protocol\packet.py", line 58, in recvall
+    packet = sock.recv(length - len(data))
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+2026-06-13 17:39:58 [INFO] Ended session 14e2bfd0-ce6e-4819-be8b-38955bdede5f for aqil
+2026-06-13 17:47:08 [INFO] Convox server listening on 0.0.0.0:9000
+2026-06-13 17:47:20 [INFO] Connected to server at 127.0.0.1:9000
+2026-06-13 17:47:20 [INFO] New connection from 127.0.0.1:54023
+2026-06-13 17:47:22 [INFO] Created session 968ed392-3839-441f-9475-e09b1733497f for aqil in room global
+2026-06-13 17:47:22 [INFO] User logged in: aqil (127.0.0.1:54023)
+2026-06-13 17:48:01 [INFO] Connected to server at 127.0.0.1:9000
+2026-06-13 17:48:01 [INFO] New connection from 127.0.0.1:54032
+2026-06-13 17:48:04 [INFO] Created session 9236be13-8a99-4683-b912-9800c3849c70 for hanif in room global
+2026-06-13 17:48:04 [INFO] User logged in: hanif (127.0.0.1:54032)
+2026-06-13 17:49:05 [ERROR] Error handling client ('127.0.0.1', 54023): [WinError 10054] An existing connection was forcibly closed by the remote host
+Traceback (most recent call last):
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\server\server.py", line 82, in handle_client
+    packet = receive_packet(conn)
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\protocol\packet.py", line 66, in receive_packet
+    header = recvall(sock, 4)
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\protocol\packet.py", line 58, in recvall
+    packet = sock.recv(length - len(data))
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+2026-06-13 17:49:05 [INFO] Ended session 968ed392-3839-441f-9475-e09b1733497f for aqil
+2026-06-13 17:49:36 [ERROR] Error handling client ('127.0.0.1', 54032): [WinError 10054] An existing connection was forcibly closed by the remote host
+Traceback (most recent call last):
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\server\server.py", line 82, in handle_client
+    packet = receive_packet(conn)
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\protocol\packet.py", line 66, in receive_packet
+    header = recvall(sock, 4)
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\protocol\packet.py", line 58, in recvall
+    packet = sock.recv(length - len(data))
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+2026-06-13 17:49:36 [INFO] Ended session 9236be13-8a99-4683-b912-9800c3849c70 for hanif
+2026-06-13 17:54:54 [INFO] Convox server listening on 0.0.0.0:9000
+2026-06-13 17:55:07 [INFO] Connected to server at 127.0.0.1:9000
+2026-06-13 17:55:07 [INFO] New connection from 127.0.0.1:50465
+2026-06-13 17:55:09 [INFO] Created session 9205e329-b5be-4b61-964c-d746d2861775 for aqil in room global
+2026-06-13 17:55:09 [INFO] User logged in: aqil (127.0.0.1:50465)
+2026-06-13 17:55:25 [INFO] Connected to server at 127.0.0.1:9000
+2026-06-13 17:55:25 [INFO] New connection from 127.0.0.1:50472
+2026-06-13 17:55:29 [INFO] Created session b43fb3ec-f2eb-46f3-b8c9-a5042daf2f06 for hanif in room global
+2026-06-13 17:55:29 [INFO] User logged in: hanif (127.0.0.1:50472)
+2026-06-13 17:57:04 [ERROR] Error handling client ('127.0.0.1', 50465): [WinError 10054] An existing connection was forcibly closed by the remote host
+Traceback (most recent call last):
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\server\server.py", line 82, in handle_client
+    packet = receive_packet(conn)
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\protocol\packet.py", line 66, in receive_packet
+    header = recvall(sock, 4)
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\protocol\packet.py", line 58, in recvall
+    packet = sock.recv(length - len(data))
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+2026-06-13 17:57:04 [INFO] Ended session 9205e329-b5be-4b61-964c-d746d2861775 for aqil
+2026-06-13 17:57:08 [ERROR] Error handling client ('127.0.0.1', 50472): [WinError 10054] An existing connection was forcibly closed by the remote host
+Traceback (most recent call last):
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\server\server.py", line 82, in handle_client
+    packet = receive_packet(conn)
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\protocol\packet.py", line 66, in receive_packet
+    header = recvall(sock, 4)
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\protocol\packet.py", line 58, in recvall
+    packet = sock.recv(length - len(data))
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+2026-06-13 17:57:08 [INFO] Ended session b43fb3ec-f2eb-46f3-b8c9-a5042daf2f06 for hanif
+2026-06-13 18:09:41 [INFO] Convox server listening on 0.0.0.0:9000
+2026-06-13 18:09:49 [INFO] Connected to server at 127.0.0.1:9000
+2026-06-13 18:09:49 [INFO] New connection from 127.0.0.1:63461
+2026-06-13 18:10:02 [INFO] Connected to server at 127.0.0.1:9000
+2026-06-13 18:10:02 [INFO] New connection from 127.0.0.1:63467
+2026-06-13 18:10:07 [INFO] Created session 37ab7f7e-d4e5-4765-8719-3ebf8be3e935 for aqil in room global
+2026-06-13 18:10:07 [INFO] User logged in: aqil (127.0.0.1:63461)
+2026-06-13 18:10:14 [INFO] Created session c5cae571-5528-48fe-b0ad-df4addfa6cba for hanif in room global
+2026-06-13 18:10:14 [INFO] User logged in: hanif (127.0.0.1:63467)
+2026-06-13 18:11:55 [ERROR] Error handling client ('127.0.0.1', 63467): [WinError 10054] An existing connection was forcibly closed by the remote host
+Traceback (most recent call last):
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\server\server.py", line 82, in handle_client
+    packet = receive_packet(conn)
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\protocol\packet.py", line 66, in receive_packet
+    header = recvall(sock, 4)
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\protocol\packet.py", line 58, in recvall
+    packet = sock.recv(length - len(data))
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+2026-06-13 18:11:55 [INFO] Ended session c5cae571-5528-48fe-b0ad-df4addfa6cba for hanif
+2026-06-13 18:11:59 [ERROR] Error handling client ('127.0.0.1', 63461): [WinError 10054] An existing connection was forcibly closed by the remote host
+Traceback (most recent call last):
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\server\server.py", line 82, in handle_client
+    packet = receive_packet(conn)
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\protocol\packet.py", line 66, in receive_packet
+    header = recvall(sock, 4)
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\protocol\packet.py", line 58, in recvall
+    packet = sock.recv(length - len(data))
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+2026-06-13 18:11:59 [INFO] Ended session 37ab7f7e-d4e5-4765-8719-3ebf8be3e935 for aqil
+2026-06-13 18:31:29 [INFO] Convox server listening on 0.0.0.0:9000
+2026-06-13 18:31:47 [INFO] Connected to server at 127.0.0.1:9000
+2026-06-13 18:31:47 [INFO] New connection from 127.0.0.1:50890
+2026-06-13 18:31:52 [INFO] Created session 03f301cb-6bc1-4c6e-99c1-17b1ba5b8211 for aqil in room global
+2026-06-13 18:31:52 [INFO] User logged in: aqil (127.0.0.1:50890)
+2026-06-13 18:32:02 [INFO] Connected to server at 127.0.0.1:9000
+2026-06-13 18:32:02 [INFO] New connection from 127.0.0.1:50895
+2026-06-13 18:32:03 [INFO] Created session 33ac5b47-eff4-4902-8dcd-c5ebebbd8d40 for hanif in room global
+2026-06-13 18:32:03 [INFO] User logged in: hanif (127.0.0.1:50895)
+2026-06-13 18:32:11 [ERROR] Error handling client ('127.0.0.1', 50895): [WinError 10054] An existing connection was forcibly closed by the remote host
+Traceback (most recent call last):
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\server\server.py", line 82, in handle_client
+    packet = receive_packet(conn)
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\protocol\packet.py", line 66, in receive_packet
+    header = recvall(sock, 4)
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\protocol\packet.py", line 58, in recvall
+    packet = sock.recv(length - len(data))
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+2026-06-13 18:32:11 [INFO] Ended session 33ac5b47-eff4-4902-8dcd-c5ebebbd8d40 for hanif
+2026-06-13 18:32:23 [INFO] Connected to server at 127.0.0.1:9000
+2026-06-13 18:32:23 [INFO] New connection from 127.0.0.1:50903
+2026-06-13 18:32:25 [INFO] Created session 99b30f24-d78e-404a-ad55-543dbf6e1b0a for hanif in room global
+2026-06-13 18:32:25 [INFO] User logged in: hanif (127.0.0.1:50903)
+2026-06-13 19:38:25 [INFO] Friend request sent from hanif to aqil
+2026-06-13 19:38:39 [INFO] aqil rejected friend request from hanif
+2026-06-13 19:38:55 [INFO] Friend request sent from hanif to aqil
+2026-06-13 19:39:50 [INFO] Friend request sent from hanif to aqil
+2026-06-13 19:40:14 [INFO] Friend request sent from aqil to hanif
+2026-06-13 19:41:44 [INFO] Connected to server at 127.0.0.1:9000
+2026-06-13 19:41:44 [INFO] New connection from 127.0.0.1:65232
+2026-06-13 19:41:46 [INFO] Created session d67d8747-638e-4d0a-a2cf-a774be955c02 for jo in room global
+2026-06-13 19:41:46 [INFO] User logged in: jo (127.0.0.1:65232)
+2026-06-13 19:42:02 [INFO] Friend request sent from hanif to jo
+2026-06-13 19:42:10 [INFO] jo accepted friend request from hanif
+2026-06-13 19:43:03 [INFO] Friend request sent from hanif to jo
+2026-06-13 19:43:17 [ERROR] Error handling client ('127.0.0.1', 65232): [WinError 10054] An existing connection was forcibly closed by the remote host
+Traceback (most recent call last):
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\server\server.py", line 82, in handle_client
+    packet = receive_packet(conn)
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\protocol\packet.py", line 66, in receive_packet
+    header = recvall(sock, 4)
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\protocol\packet.py", line 58, in recvall
+    packet = sock.recv(length - len(data))
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+2026-06-13 19:43:17 [INFO] Ended session d67d8747-638e-4d0a-a2cf-a774be955c02 for jo
+2026-06-13 19:43:21 [ERROR] Error handling client ('127.0.0.1', 50903): [WinError 10054] An existing connection was forcibly closed by the remote host
+Traceback (most recent call last):
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\server\server.py", line 82, in handle_client
+    packet = receive_packet(conn)
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\protocol\packet.py", line 66, in receive_packet
+    header = recvall(sock, 4)
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\protocol\packet.py", line 58, in recvall
+    packet = sock.recv(length - len(data))
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+2026-06-13 19:43:21 [INFO] Ended session 99b30f24-d78e-404a-ad55-543dbf6e1b0a for hanif
+2026-06-13 19:43:25 [ERROR] Error handling client ('127.0.0.1', 50890): [WinError 10054] An existing connection was forcibly closed by the remote host
+Traceback (most recent call last):
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\server\server.py", line 82, in handle_client
+    packet = receive_packet(conn)
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\protocol\packet.py", line 66, in receive_packet
+    header = recvall(sock, 4)
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\protocol\packet.py", line 58, in recvall
+    packet = sock.recv(length - len(data))
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+2026-06-13 19:43:25 [INFO] Ended session 03f301cb-6bc1-4c6e-99c1-17b1ba5b8211 for aqil
+2026-06-13 19:51:40 [INFO] Convox server listening on 0.0.0.0:9000
+2026-06-13 19:51:47 [INFO] Connected to server at 127.0.0.1:9000
+2026-06-13 19:51:47 [INFO] New connection from 127.0.0.1:59756
+2026-06-13 19:51:51 [INFO] Created session 3ba2c6f1-5541-4d69-b8a3-d731baf14f9f for aqil in room global
+2026-06-13 19:51:51 [INFO] User logged in: aqil (127.0.0.1:59756)
+2026-06-13 19:52:02 [INFO] Connected to server at 127.0.0.1:9000
+2026-06-13 19:52:02 [INFO] New connection from 127.0.0.1:59762
+2026-06-13 19:52:05 [INFO] Created session 88ea911a-94a4-4bfa-8e2b-47bae6469b5d for hanif in room global
+2026-06-13 19:52:05 [INFO] User logged in: hanif (127.0.0.1:59762)
+2026-06-13 19:52:22 [INFO] Friend request sent from aqil to hanif
+2026-06-13 19:52:36 [INFO] hanif accepted friend request from aqil
+2026-06-13 19:52:59 [INFO] Connected to server at 127.0.0.1:9000
+2026-06-13 19:52:59 [INFO] New connection from 127.0.0.1:59776
+2026-06-13 19:53:00 [INFO] Created session d0aaad27-606d-46bb-be68-9fc5305633db for jo in room global
+2026-06-13 19:53:00 [INFO] User logged in: jo (127.0.0.1:59776)
+2026-06-13 19:53:13 [INFO] Friend request sent from jo to hanif
+2026-06-13 19:53:20 [INFO] hanif accepted friend request from jo
+2026-06-13 19:53:46 [INFO] Friend request sent from aqil to hanif
+2026-06-13 19:53:54 [INFO] hanif accepted friend request from aqil
+2026-06-13 20:00:38 [ERROR] Error handling client ('127.0.0.1', 59756): [WinError 10054] An existing connection was forcibly closed by the remote host
+Traceback (most recent call last):
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\server\server.py", line 82, in handle_client
+    packet = receive_packet(conn)
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\protocol\packet.py", line 66, in receive_packet
+    header = recvall(sock, 4)
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\protocol\packet.py", line 58, in recvall
+    packet = sock.recv(length - len(data))
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+2026-06-13 20:00:38 [INFO] Ended session 3ba2c6f1-5541-4d69-b8a3-d731baf14f9f for aqil
+2026-06-13 20:00:45 [ERROR] Error handling client ('127.0.0.1', 59762): [WinError 10054] An existing connection was forcibly closed by the remote host
+Traceback (most recent call last):
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\server\server.py", line 82, in handle_client
+    packet = receive_packet(conn)
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\protocol\packet.py", line 66, in receive_packet
+    header = recvall(sock, 4)
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\protocol\packet.py", line 58, in recvall
+    packet = sock.recv(length - len(data))
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+2026-06-13 20:00:45 [INFO] Ended session 88ea911a-94a4-4bfa-8e2b-47bae6469b5d for hanif
+2026-06-13 20:00:48 [ERROR] Error handling client ('127.0.0.1', 59776): [WinError 10054] An existing connection was forcibly closed by the remote host
+Traceback (most recent call last):
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\server\server.py", line 82, in handle_client
+    packet = receive_packet(conn)
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\protocol\packet.py", line 66, in receive_packet
+    header = recvall(sock, 4)
+  File "D:\Kuliah\Semester 4\Progjar\FP\g04-final-project-d-25_convox\protocol\packet.py", line 58, in recvall
+    packet = sock.recv(length - len(data))
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+2026-06-13 20:00:48 [INFO] Ended session d0aaad27-606d-46bb-be68-9fc5305633db for jo
