@@ -184,8 +184,22 @@ class Database:
         receiver_id = self.find_user_id(receiver)
         if receiver_id is None:
             raise ValueError(f"User '{receiver}' does not exist.")
+
+        existing = self.execute(
+            "SELECT status FROM friend_requests WHERE sender_id = ? AND receiver_id = ?",
+            (sender_id, receiver_id),
+        ).fetchone()
+        if existing:
+            if existing["status"] == "PENDING":
+                return
+            self.execute(
+                "UPDATE friend_requests SET status = ?, created_at = ? WHERE sender_id = ? AND receiver_id = ?",
+                ("PENDING", datetime.utcnow().isoformat(), sender_id, receiver_id),
+            )
+            return
+
         self.execute(
-            "INSERT OR IGNORE INTO friend_requests (sender_id, receiver_id, status, created_at) VALUES (?, ?, ?, ?)",
+            "INSERT INTO friend_requests (sender_id, receiver_id, status, created_at) VALUES (?, ?, ?, ?)",
             (sender_id, receiver_id, "PENDING", datetime.utcnow().isoformat()),
         )
 

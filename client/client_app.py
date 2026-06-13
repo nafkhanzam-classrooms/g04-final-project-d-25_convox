@@ -60,7 +60,10 @@ class ConvoxClient:
             self.session_token = packet.get("session_token")
             self.username = packet.get("username") or self.username
             self.current_room = packet.get("room", "global")
-            print(f"[SESSION] Session restored: {self.session_token[:16]}...")
+            if self.session_token:
+                print(f"[SESSION] Session restored: {self.session_token[:16]}...")
+            else:
+                print("[SESSION] Session restored")
         elif packet_type == PacketType.MESSAGE.value:
             print(f"[{timestamp}] [{room}] {sender}: {message}")
         elif packet_type == PacketType.PRIVATE_MESSAGE.value:
@@ -76,6 +79,7 @@ class ConvoxClient:
         elif packet_type == PacketType.MATCH_FOUND.value:
             room = packet.get("room", "unknown")
             participants = packet.get("participants", [])
+            self.current_room = room
             print(f"[{timestamp}] [MATCH] Join room {room} with {', '.join(participants)}")
         elif packet_type == PacketType.TRANSFER_PROGRESS.value:
             transfer_id = packet.get("transfer_id", "unknown")
@@ -100,6 +104,10 @@ class ConvoxClient:
                 print(f"  [{item.get('timestamp')}] {item.get('sender')}: {item.get('content')}")
         elif packet_type == PacketType.SYSTEM.value:
             print(f"[{timestamp}] [SYSTEM] {message}")
+            if message.startswith("You joined room '"):
+                self.current_room = room
+            elif message.startswith("You left "):
+                self.current_room = "global"
         elif packet_type == PacketType.ERROR.value:
             print(f"[ERROR] {message}")
         elif packet_type == PacketType.GET_ONLINE_USERS.value:
@@ -236,6 +244,9 @@ class ConvoxClient:
             print(f"Error sending file: {exc}")
 
     def voice_join(self) -> None:
+        if self.username is None:
+            print("Cannot join voice before logging in.")
+            return
         if self.in_voice_room:
             print(f"Already in voice room: {self.in_voice_room}")
             return
