@@ -1,72 +1,98 @@
-"""Chat area widget showing messages."""
+"""Chat area widget rendering message bubbles in a scrollable list."""
 
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QTextEdit
-from PyQt6.QtGui import QFont, QColor, QTextCursor
-from PyQt6.QtCore import Qt
+from typing import Iterable
 
+from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtWidgets import QFrame, QScrollArea, QVBoxLayout, QWidget
+
+from gui.models.message_model import Message, MessageKind
+from gui.styles import colors
+from gui.widgets.message_bubble import MessageBubble
 from utils.logger import get_logger
 
 
 class ChatArea(QWidget):
-    """Central chat display area."""
+    """Scrollable list of message bubbles with auto-scroll and clear support."""
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
         self.logger = get_logger("ChatArea")
-        self.init_ui()
+        self._build()
 
-    def init_ui(self) -> None:
-        """Initialize UI components."""
-        layout = QVBoxLayout()
-        layout.setContentsMargins(0, 0, 0, 0)
+    # ---------------------------------------------------------------- building
+    def _build(self) -> None:
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
 
-        self.chat_display = QTextEdit()
-        self.chat_display.setReadOnly(True)
-        self.chat_display.setStyleSheet("""
-            QTextEdit {
-                background-color: #1e1e1e;
-                color: #ffffff;
-                border: none;
-                font-size: 12px;
-                font-family: "Courier New", monospace;
-            }
-            QTextEdit:focus {
-                outline: none;
-            }
-        """)
+        self._scroll = QScrollArea()
+        self._scroll.setWidgetResizable(True)
+        self._scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self._scroll.setStyleSheet(
+            f"QScrollArea {{ background-color: {colors.BG_DEEPEST}; border: none; }}"
+        )
 
-        layout.addWidget(self.chat_display)
-        self.setLayout(layout)
+        self._container = QWidget()
+        self._container.setStyleSheet(
+            f"background-color: {colors.BG_DEEPEST};"
+        )
+        self._stack = QVBoxLayout(self._container)
+        self._stack.setContentsMargins(0, 8, 0, 8)
+        self._stack.setSpacing(2)
+        self._stack.addStretch(1)
 
-    def add_message(self, sender: str, content: str, timestamp: str) -> None:
-        """Add regular message to chat."""
-        cursor = self.chat_display.textCursor()
-        cursor.movePosition(QTextCursor.MoveOperation.End)
+        self._scroll.setWidget(self._container)
+        outer.addWidget(self._scroll)
 
-        # Format: [timestamp] sender: content
-        format_text = f"[{timestamp}] {sender}: {content}\n"
+    # ----------------------------------------------------------------- public
+    def clear(self) -> None:
+        while self._stack.count() > 1:  # keep the trailing stretch
+            item = self._stack.takeAt(0)
+            widget = item.widget() if item is not None else None
+            if widget is not None:
+                widget.deleteLater()
 
-        cursor.insertText(format_text)
-        self.chat_display.verticalScrollBar().setValue(
-            self.chat_display.verticalScrollBar().maximum()
+    def render_messages(self, messages: Iterable[Message]) -> None:
+        self.clear()
+        for msg in messages:
+            self._append_bubble(msg)
+        QTimer.singleShot(0, self._scroll_to_bottom)
+
+    def add_message_obj(self, message: Message) -> None:
+        self._append_bubble(message)
+        QTimer.singleShot(0, self._scroll_to_bottom)
+
+    # Compatibility helpers used by older code paths -------------------------
+    def add_message(self, sender: str, content: str, timestamp: str = "") -> None:
+        self.add_message_obj(
+            Message(sender=sender, content=content, timestamp=timestamp, kind=MessageKind.NORMAL)
+        )
+
+    def add_self_message(self, content: str, timestamp: str = "") -> None:
+        self.add_message_obj(
+            Message(sender="me", content=content, timestamp=timestamp, kind=MessageKind.SELF)
         )
 
     def add_system_message(self, message: str) -> None:
-        """Add system message (styled differently)."""
-        cursor = self.chat_display.textCursor()
-        cursor.movePosition(QTextCursor.MoveOperation.End)
+        self.add_message_obj(Message(sender="system", content=message, kind=MessageKind.SYSTEM))
 
-        format_text = f"[SYSTEM] {message}\n"
-
-        cursor.insertText(format_text)
-        self.chat_display.verticalScrollBar().setValue(
-            self.chat_display.verticalScrollBar().maximum()
+    def add_private_message(self, sender: str, content: str, timestamp: str = "", outgoing: bool = False) -> None:
+        self.add_message_obj(
+            Message(
+                sender=sender,
+                content=content,
+                timestamp=timestamp,
+                kind=MessageKind.SELF if outgoing else MessageKind.PRIVATE,
+                target_user=sender if outgoing else None,
+            )
         )
 
-    def clear(self) -> None:
-        """Clear chat display."""
-        self.chat_display.clear()
+    # ---------------------------------------------------------------- helpers
+    def _append_bubble(self, message: Message) -> None:
+        bubble = MessageBubble(message)
+        # insert before the trailing stretch
+        self._stack.insertWidget(self._stack.count() - 1, bubble)
 
-    def get_content(self) -> str:
-        """Get all chat content."""
-        return self.chat_display.toPlainText()
+    def _scroll_to_bottom(self) -> None:
+        bar = self._scroll.verticalScrollBar()
+        bar.setValue(bar.maximum())

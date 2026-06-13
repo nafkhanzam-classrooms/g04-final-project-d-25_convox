@@ -1,245 +1,217 @@
-"""Voice control widget."""
+"""Voice control bar (join, mute, status indicator)."""
 
-from PyQt6.QtWidgets import QWidget, QHBoxLayout, QPushButton, QLabel, QSpinBox
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QFont, QColor
+from typing import Optional
 
+from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtWidgets import (
+    QHBoxLayout,
+    QLabel,
+    QMessageBox,
+    QPushButton,
+    QSlider,
+    QSpacerItem,
+    QSizePolicy,
+    QWidget,
+)
+from PyQt6.QtCore import Qt
+
+from gui.controllers.event_dispatcher import get_dispatcher
 from gui.controllers.tcp_controller import TCPController
+from gui.controllers.udp_voice_controller import UDPVoiceController
+from gui.styles import colors
 from utils.logger import get_logger
 
 
 class VoiceControls(QWidget):
-    """Voice control panel with join/leave, mute, PTT controls."""
+    """Bottom voice control bar. Join/leave, mute/unmute, status."""
 
-    voice_status_changed = pyqtSignal(str)  # "started", "stopped", "muted", "unmuted"
+    voice_status_changed = pyqtSignal(str)  # "started" | "stopped" | "muted" | "unmuted"
 
-    def __init__(self, tcp_controller: TCPController):
-        super().__init__()
+    def __init__(
+        self,
+        tcp_controller: TCPController,
+        voice_controller: Optional[UDPVoiceController] = None,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
         self.logger = get_logger("VoiceControls")
         self.tcp_controller = tcp_controller
+        self.voice_controller = voice_controller
+        self.dispatcher = get_dispatcher()
         self.in_voice = False
         self.muted = False
         self.current_room = "global"
+        self.setFixedHeight(56)
+        self.setObjectName("voiceBar")
+        self.setStyleSheet(
+            f"#voiceBar {{ background-color: {colors.BG_DEEPEST}; "
+            f"border-top: 1px solid {colors.BORDER_SOFT}; }}"
+        )
+        self._build()
+        if self.voice_controller is not None:
+            self.voice_controller.voice_state_changed.connect(self._on_voice_state)
+            self.voice_controller.mute_state_changed.connect(self._on_mute_state)
+            self.voice_controller.audio_unavailable.connect(self._on_audio_unavailable)
 
-        self.init_ui()
-        self.setMinimumHeight(50)
-        self.setMaximumHeight(60)
-        self.setStyleSheet("background-color: #1e1e1e; border-top: 1px solid #404040;")
-
-    def init_ui(self) -> None:
-        """Initialize UI components."""
-        layout = QHBoxLayout()
-        layout.setContentsMargins(10, 5, 10, 5)
+    # ---------------------------------------------------------------- layout
+    def _build(self) -> None:
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(14, 8, 14, 8)
         layout.setSpacing(10)
 
-        # Status indicator
-        self.status_label = QLabel("Voice: Offline")
-        self.status_label.setStyleSheet("color: #808080; font-weight: bold;")
+        self.status_label = QLabel("Voice Offline")
+        self.status_label.setStyleSheet(
+            f"color: {colors.TEXT_MUTED}; font-weight: 600;"
+        )
         layout.addWidget(self.status_label)
 
-        layout.addSpacing(20)
+        layout.addItem(QSpacerItem(10, 1, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
 
-        # Join/Leave button
         self.join_leave_btn = QPushButton("Join Voice")
-        self.join_leave_btn.setMinimumHeight(35)
-        self.join_leave_btn.setMaximumWidth(100)
+        self.join_leave_btn.setProperty("variant", "success")
+        self.join_leave_btn.setMinimumWidth(110)
         self.join_leave_btn.clicked.connect(self.toggle_voice)
-        self.join_leave_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #28a745;
-                color: #ffffff;
-                border: none;
-                border-radius: 4px;
-                font-weight: bold;
-                font-size: 12px;
-            }
-            QPushButton:hover {
-                background-color: #2fb34e;
-            }
-            QPushButton:pressed {
-                background-color: #205c3a;
-            }
-        """)
         layout.addWidget(self.join_leave_btn)
 
-        # Mute button
         self.mute_btn = QPushButton("Mute")
-        self.mute_btn.setMinimumHeight(35)
-        self.mute_btn.setMaximumWidth(80)
+        self.mute_btn.setProperty("variant", "subtle")
         self.mute_btn.setEnabled(False)
+        self.mute_btn.setMinimumWidth(90)
         self.mute_btn.clicked.connect(self.toggle_mute)
-        self.mute_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #404040;
-                color: #ffffff;
-                border: 1px solid #505050;
-                border-radius: 4px;
-                font-weight: bold;
-                font-size: 12px;
-            }
-            QPushButton:hover:!pressed {
-                background-color: #505050;
-            }
-            QPushButton:pressed {
-                background-color: #c41e3a;
-            }
-        """)
         layout.addWidget(self.mute_btn)
 
-        # Speaking indicator
-        self.speaking_label = QLabel("🔇 Idle")
-        self.speaking_label.setStyleSheet("color: #808080; font-size: 11px;")
-        layout.addWidget(self.speaking_label)
+        self.ptt_btn = QPushButton("Push-to-Talk")
+        self.ptt_btn.setCheckable(True)
+        self.ptt_btn.setProperty("variant", "ghost")
+        self.ptt_btn.toggled.connect(self._on_ptt_toggled)
+        layout.addWidget(self.ptt_btn)
 
-        # Volume indicator
-        layout.addSpacing(20)
-        volume_label = QLabel("Volume:")
-        volume_label.setStyleSheet("color: #ffffff; font-size: 11px;")
-        layout.addWidget(volume_label)
+        layout.addStretch(1)
 
-        self.volume_slider = QSpinBox()
+        layout.addWidget(QLabel("Volume"))
+        self.volume_slider = QSlider(Qt.Orientation.Horizontal)
         self.volume_slider.setRange(0, 100)
         self.volume_slider.setValue(80)
-        self.volume_slider.setMaximumWidth(60)
-        self.volume_slider.setStyleSheet("""
-            QSpinBox {
-                background-color: #2b2b2b;
-                color: #ffffff;
-                border: 1px solid #404040;
-                border-radius: 3px;
-            }
-        """)
+        self.volume_slider.setFixedWidth(110)
         layout.addWidget(self.volume_slider)
 
-        # Participant count
-        layout.addSpacing(20)
         self.participants_label = QLabel("Participants: 0")
-        self.participants_label.setStyleSheet("color: #ffffff; font-size: 11px;")
+        self.participants_label.setProperty("role", "muted")
+        self.participants_label.setStyleSheet(f"color: {colors.TEXT_MUTED};")
         layout.addWidget(self.participants_label)
 
-        layout.addStretch()
+    # ----------------------------------------------------------------- state
+    def set_room(self, room: str) -> None:
+        if self.in_voice and room != self.current_room:
+            self.stop_voice()
+        self.current_room = room
 
-        self.setLayout(layout)
+    def update_participants_count(self, count: int) -> None:
+        self.participants_label.setText(f"Participants: {count}")
 
+    # -------------------------------------------------------------- handlers
     def toggle_voice(self) -> None:
-        """Toggle voice connection."""
         if not self.in_voice:
             self.start_voice()
         else:
             self.stop_voice()
 
     def start_voice(self) -> None:
-        """Start voice communication."""
-        # Use a default UDP port (would be dynamic in production)
-        udp_port = 9001
+        udp_port = 0
+        if self.voice_controller is not None:
+            udp_port = self.voice_controller.join(self.current_room) or 0
+        # Even without local audio we still tell the server we are joining
+        # so other participants see us in the voice room.
         self.tcp_controller.send_voice_start(self.current_room, udp_port)
         self.in_voice = True
-        self.update_ui_state()
-        self.logger.info("Voice started in %s", self.current_room)
+        self.muted = False if self.voice_controller is None else self.voice_controller.muted
+        self._render()
+        self.voice_status_changed.emit("started")
+        self.logger.info("Voice started in %s (port=%s)", self.current_room, udp_port)
 
     def stop_voice(self) -> None:
-        """Stop voice communication."""
+        if self.voice_controller is not None:
+            self.voice_controller.leave()
         self.tcp_controller.send_voice_stop(self.current_room)
         self.in_voice = False
         self.muted = False
-        self.update_ui_state()
+        self._render()
+        self.voice_status_changed.emit("stopped")
         self.logger.info("Voice stopped")
 
     def toggle_mute(self) -> None:
-        """Toggle mute state."""
         if not self.in_voice:
             return
-
-        self.muted = not self.muted
+        if self.voice_controller is not None:
+            self.muted = self.voice_controller.toggle_mute()
+        else:
+            self.muted = not self.muted
         status = "muted" if self.muted else "unmuted"
         self.tcp_controller.send_voice_status(self.current_room, status)
-        self.update_ui_state()
-        self.logger.info("Mute toggled: %s", status)
+        self._render()
+        self.voice_status_changed.emit(status)
 
-    def set_room(self, room: str) -> None:
-        """Set current room."""
-        self.current_room = room
-        # If in voice, would need to switch voice room
+    def _on_ptt_toggled(self, checked: bool) -> None:
+        if not self.in_voice or self.voice_controller is None:
+            return
+        # Push-to-talk: while the toggle is on we send audio, otherwise
+        # we hold mute on the controller. The button label tells the user
+        # what state they're in.
+        self.voice_controller.set_muted(not checked)
+        self.muted = not checked
+        status = "muted" if self.muted else "unmuted"
+        self.tcp_controller.send_voice_status(self.current_room, status)
+        self._render()
+
+    # ---------------------------------------------------------------- render
+    def _render(self) -> None:
         if self.in_voice:
-            self.stop_voice()
-
-    def update_participants_count(self, count: int) -> None:
-        """Update participant count display."""
-        self.participants_label.setText(f"Participants: {count}")
-
-    def update_ui_state(self) -> None:
-        """Update button states based on voice state."""
-        if self.in_voice:
-            self.status_label.setText("Voice: Online")
-            self.status_label.setStyleSheet("color: #00d944; font-weight: bold;")
+            self.status_label.setText(f"Voice • {self.current_room}")
+            self.status_label.setStyleSheet(
+                f"color: {colors.SUCCESS}; font-weight: 700;"
+            )
             self.join_leave_btn.setText("Leave Voice")
-            self.join_leave_btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #c41e3a;
-                    color: #ffffff;
-                    border: none;
-                    border-radius: 4px;
-                    font-weight: bold;
-                    font-size: 12px;
-                }
-                QPushButton:hover {
-                    background-color: #d32f2f;
-                }
-            """)
+            self.join_leave_btn.setProperty("variant", "danger")
             self.mute_btn.setEnabled(True)
-
-            if self.muted:
-                self.mute_btn.setText("Unmute")
-                self.mute_btn.setStyleSheet("""
-                    QPushButton {
-                        background-color: #c41e3a;
-                        color: #ffffff;
-                        border: none;
-                        border-radius: 4px;
-                        font-weight: bold;
-                        font-size: 12px;
-                    }
-                    QPushButton:hover {
-                        background-color: #d32f2f;
-                    }
-                """)
-                self.speaking_label.setText("🔇 Muted")
-                self.speaking_label.setStyleSheet("color: #c41e3a; font-size: 11px; font-weight: bold;")
-            else:
-                self.mute_btn.setText("Mute")
-                self.mute_btn.setStyleSheet("""
-                    QPushButton {
-                        background-color: #404040;
-                        color: #ffffff;
-                        border: 1px solid #505050;
-                        border-radius: 4px;
-                        font-weight: bold;
-                        font-size: 12px;
-                    }
-                    QPushButton:hover {
-                        background-color: #505050;
-                    }
-                """)
-                self.speaking_label.setText("🔊 Live")
-                self.speaking_label.setStyleSheet("color: #00d944; font-size: 11px; font-weight: bold;")
+            self.mute_btn.setText("Unmute" if self.muted else "Mute")
+            self.mute_btn.setProperty("variant", "danger" if self.muted else "subtle")
+            self.ptt_btn.setEnabled(True)
         else:
-            self.status_label.setText("Voice: Offline")
-            self.status_label.setStyleSheet("color: #808080; font-weight: bold;")
+            self.status_label.setText("Voice Offline")
+            self.status_label.setStyleSheet(
+                f"color: {colors.TEXT_MUTED}; font-weight: 600;"
+            )
             self.join_leave_btn.setText("Join Voice")
-            self.join_leave_btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #28a745;
-                    color: #ffffff;
-                    border: none;
-                    border-radius: 4px;
-                    font-weight: bold;
-                    font-size: 12px;
-                }
-                QPushButton:hover {
-                    background-color: #2fb34e;
-                }
-            """)
+            self.join_leave_btn.setProperty("variant", "success")
             self.mute_btn.setEnabled(False)
             self.mute_btn.setText("Mute")
-            self.speaking_label.setText("🔇 Offline")
-            self.speaking_label.setStyleSheet("color: #808080; font-size: 11px;")
+            self.mute_btn.setProperty("variant", "subtle")
+            self.ptt_btn.setEnabled(False)
+            self.ptt_btn.setChecked(False)
+        self._restyle()
+
+    def _restyle(self) -> None:
+        # Force re-evaluation of dynamic ``variant`` property.
+        for btn in (self.join_leave_btn, self.mute_btn, self.ptt_btn):
+            btn.style().unpolish(btn)
+            btn.style().polish(btn)
+
+    # -------------------------------------------------------------- callbacks
+    def _on_voice_state(self, connected: bool) -> None:
+        if connected != self.in_voice:
+            self.in_voice = connected
+            self._render()
+
+    def _on_mute_state(self, muted: bool) -> None:
+        self.muted = muted
+        self._render()
+
+    def _on_audio_unavailable(self, reason: str) -> None:
+        self.logger.warning("Audio unavailable: %s", reason)
+        QMessageBox.warning(
+            self,
+            "Voice Unavailable",
+            "Audio devices could not be initialised. You will appear in the "
+            "voice room but no audio will be sent or received.\n\n"
+            f"Details: {reason}",
+        )

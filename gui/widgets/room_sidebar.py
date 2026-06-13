@@ -1,184 +1,175 @@
-"""Room sidebar widget for Convox GUI."""
+"""Room sidebar widget."""
 
-from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QListWidget, QListWidgetItem, QInputDialog
-)
+from typing import Dict, Optional
+
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QFont, QColor
+from PyQt6.QtWidgets import (
+    QHBoxLayout,
+    QInputDialog,
+    QLabel,
+    QListWidget,
+    QListWidgetItem,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 
+from gui.controllers.event_dispatcher import get_dispatcher
 from gui.controllers.tcp_controller import TCPController
+from gui.models.app_model import ApplicationModel
+from gui.styles import colors
 from utils.logger import get_logger
 
 
 class RoomSidebar(QWidget):
-    """Sidebar showing available rooms."""
+    """Left sidebar listing all known rooms."""
 
-    room_changed = pyqtSignal(str)  # room_name
+    room_changed = pyqtSignal(str)  # room name selected by the user
 
-    def __init__(self, tcp_controller: TCPController):
-        super().__init__()
+    def __init__(
+        self,
+        tcp_controller: TCPController,
+        model: Optional[ApplicationModel] = None,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
         self.logger = get_logger("RoomSidebar")
         self.tcp_controller = tcp_controller
+        self.dispatcher = get_dispatcher()
+        self.model = model
         self.current_room = "global"
-        self.rooms = {"global": 0}  # room_name -> unread_count
+        self._items: Dict[str, QListWidgetItem] = {}
+        self.setMinimumWidth(220)
+        self.setMaximumWidth(280)
+        self._build()
+        self._wire_signals()
+        self.add_room("global")
 
-        self.init_ui()
-        self.setMinimumWidth(200)
-        self.setMaximumWidth(250)
-
-    def init_ui(self) -> None:
-        """Initialize UI components."""
-        layout = QVBoxLayout()
+    # ---------------------------------------------------------------- layout
+    def _build(self) -> None:
+        layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        # Title
-        title = QWidget()
-        title_layout = QHBoxLayout()
-        title_layout.setContentsMargins(10, 10, 10, 10)
+        header = QWidget()
+        header.setFixedHeight(48)
+        header.setStyleSheet(
+            f"background-color: {colors.BG_DEEPEST}; border-bottom: 1px solid {colors.BORDER_SOFT};"
+        )
+        header_layout = QHBoxLayout(header)
+        header_layout.setContentsMargins(16, 0, 12, 0)
+        title = QLabel("Rooms")
+        title.setProperty("role", "section")
+        title.setStyleSheet(f"color: {colors.TEXT_SECONDARY}; font-weight: 700;")
+        header_layout.addWidget(title)
+        header_layout.addStretch()
+        layout.addWidget(header)
 
-        title_label = QWidget()
-        title_label_text = "Rooms"
-        title_label_font = QFont()
-        title_label_font.setBold(True)
-        
-        # Create label manually
-        from PyQt6.QtWidgets import QLabel
-        title_text = QLabel(title_label_text)
-        title_text.setFont(title_label_font)
-        title_text.setStyleSheet("color: #ffffff; font-size: 13px;")
-        title_layout.addWidget(title_text)
-        title_layout.addStretch()
-
-        title.setLayout(title_layout)
-        title.setStyleSheet("background-color: #1e1e1e; border-bottom: 1px solid #404040;")
-        title.setMaximumHeight(40)
-        layout.addWidget(title)
-
-        # Room list
         self.room_list = QListWidget()
-        self.room_list.itemClicked.connect(self.on_room_selected)
-        self.room_list.setStyleSheet("""
-            QListWidget {
-                background-color: #2b2b2b;
-                color: #ffffff;
-                border: none;
-            }
-            QListWidget::item {
-                padding: 8px;
-                border-radius: 4px;
-                margin: 2px 5px;
-            }
-            QListWidget::item:selected {
-                background-color: #0078d4;
-            }
-            QListWidget::item:hover {
-                background-color: #353535;
-            }
-        """)
-        layout.addWidget(self.room_list)
+        self.room_list.itemClicked.connect(self._on_room_selected)
+        layout.addWidget(self.room_list, 1)
 
-        # Add initial global room
-        self.add_room("global")
+        button_row = QHBoxLayout()
+        button_row.setContentsMargins(10, 10, 10, 12)
+        button_row.setSpacing(6)
 
-        # Buttons
-        button_layout = QHBoxLayout()
-        button_layout.setContentsMargins(10, 10, 10, 10)
-        button_layout.setSpacing(5)
+        self.create_btn = QPushButton("+ New")
+        self.create_btn.clicked.connect(self.create_room_dialog)
+        button_row.addWidget(self.create_btn)
 
-        create_btn = QPushButton("+ New")
-        create_btn.setMinimumHeight(30)
-        create_btn.clicked.connect(self.create_room)
-        create_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #0078d4;
-                color: #ffffff;
-                border: none;
-                border-radius: 4px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #1084d7;
-            }
-        """)
-        button_layout.addWidget(create_btn)
+        self.join_btn = QPushButton("Join")
+        self.join_btn.setProperty("variant", "subtle")
+        self.join_btn.clicked.connect(self.join_room_dialog)
+        button_row.addWidget(self.join_btn)
 
-        join_btn = QPushButton("Join")
-        join_btn.setMinimumHeight(30)
-        join_btn.clicked.connect(self.join_room)
-        join_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #28a745;
-                color: #ffffff;
-                border: none;
-                border-radius: 4px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #2fb34e;
-            }
-        """)
-        button_layout.addWidget(join_btn)
+        layout.addLayout(button_row)
 
-        layout.addLayout(button_layout)
+    # ---------------------------------------------------------------- signals
+    def _wire_signals(self) -> None:
+        self.dispatcher.room_joined.connect(self.add_room)
+        self.dispatcher.room_deleted.connect(self.remove_room)
+        self.dispatcher.room_list_updated.connect(self._on_room_list)
+        self.dispatcher.session_restored.connect(lambda _u, room: self.set_current(room))
 
-        self.setLayout(layout)
-        self.setStyleSheet("background-color: #2b2b2b;")
-
+    # ----------------------------------------------------------------- public
     def add_room(self, room_name: str) -> None:
-        """Add room to sidebar."""
-        if room_name in self.rooms:
+        if not room_name or room_name in self._items:
             return
-
-        self.rooms[room_name] = 0
-
-        item = QListWidgetItem(room_name)
+        item = QListWidgetItem(self._format_label(room_name, 0))
         item.setData(Qt.ItemDataRole.UserRole, room_name)
         self.room_list.addItem(item)
-
-        if room_name == "global":
+        self._items[room_name] = item
+        if room_name == self.current_room:
             self.room_list.setCurrentItem(item)
-            self.current_room = room_name
 
-    def on_room_selected(self, item: QListWidgetItem) -> None:
-        """Handle room selection."""
-        room_name = item.data(Qt.ItemDataRole.UserRole)
+    def remove_room(self, room_name: str) -> None:
+        item = self._items.pop(room_name, None)
+        if item is not None:
+            row = self.room_list.row(item)
+            self.room_list.takeItem(row)
+        if self.current_room == room_name:
+            self.set_current("global")
+            self.room_changed.emit("global")
+
+    def set_current(self, room_name: str) -> None:
+        self.add_room(room_name)
         self.current_room = room_name
-        self.room_list.setCurrentItem(item)
-        self.room_changed.emit(room_name)
-        self.logger.info("Room selected: %s", room_name)
-
-    def create_room(self) -> None:
-        """Create new room dialog."""
-        room_name, ok = QInputDialog.getText(
-            self,
-            "Create Room",
-            "Room name:"
-        )
-        if ok and room_name:
-            self.tcp_controller.create_room(room_name)
-            self.logger.info("Creating room: %s", room_name)
-
-    def join_room(self) -> None:
-        """Join room dialog."""
-        room_name, ok = QInputDialog.getText(
-            self,
-            "Join Room",
-            "Room name:"
-        )
-        if ok and room_name:
-            self.tcp_controller.join_room(room_name)
-            self.add_room(room_name)
-            self.logger.info("Joining room: %s", room_name)
+        item = self._items.get(room_name)
+        if item is not None:
+            self.room_list.setCurrentItem(item)
+            self._refresh_label(room_name)
 
     def update_room_unread(self, room_name: str) -> None:
-        """Update unread count for room."""
-        if room_name in self.rooms:
-            self.rooms[room_name] += 1
-            for i in range(self.room_list.count()):
-                item = self.room_list.item(i)
-                if item.data(Qt.ItemDataRole.UserRole) == room_name:
-                    unread = self.rooms[room_name]
-                    if unread > 0:
-                        item.setText(f"{room_name} ({unread})")
-                    break
+        if self.model is None or room_name not in self.model.rooms:
+            return
+        self._refresh_label(room_name)
+
+    def refresh_unread(self) -> None:
+        if self.model is None:
+            return
+        for name in list(self._items.keys()):
+            self._refresh_label(name)
+
+    # -------------------------------------------------------------- internals
+    def _on_room_selected(self, item: QListWidgetItem) -> None:
+        room_name = item.data(Qt.ItemDataRole.UserRole)
+        if not room_name or room_name == self.current_room:
+            return
+        self.current_room = room_name
+        self.room_changed.emit(room_name)
+        self._refresh_label(room_name)
+        self.logger.info("Room selected: %s", room_name)
+
+    def _on_room_list(self, rooms: list[str]) -> None:
+        for name in rooms:
+            self.add_room(name)
+
+    def create_room_dialog(self) -> None:
+        room_name, ok = QInputDialog.getText(self, "Create Room", "Room name:")
+        if ok and room_name.strip():
+            self.tcp_controller.create_room(room_name.strip())
+
+    def join_room_dialog(self) -> None:
+        room_name, ok = QInputDialog.getText(self, "Join Room", "Room name:")
+        if ok and room_name.strip():
+            self.tcp_controller.join_room(room_name.strip())
+            self.add_room(room_name.strip())
+
+    def _refresh_label(self, room_name: str) -> None:
+        item = self._items.get(room_name)
+        if item is None:
+            return
+        unread = 0
+        if self.model is not None and room_name in self.model.rooms:
+            unread = self.model.rooms[room_name].unread_count
+        if room_name == self.current_room:
+            unread = 0
+            if self.model is not None and room_name in self.model.rooms:
+                self.model.rooms[room_name].clear_unread()
+        item.setText(self._format_label(room_name, unread))
+
+    def _format_label(self, room_name: str, unread: int) -> str:
+        prefix = "#"
+        if unread > 0:
+            return f"{prefix} {room_name}    ({unread})"
+        return f"{prefix} {room_name}"

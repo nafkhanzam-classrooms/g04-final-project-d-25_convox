@@ -1,7 +1,6 @@
 """TCP controller for realtime communication with Convox server."""
 
 import socket
-import threading
 from typing import Any, Dict, Optional
 
 from PyQt6.QtCore import QObject, QThread, pyqtSignal, QMutex
@@ -33,6 +32,7 @@ class TCPWorker(QObject):
         """Establish TCP connection to server."""
         try:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             self.socket.connect((self.host, self.port))
             self.logger.info("Connected to server at %s:%s", self.host, self.port)
             self.dispatcher.connected.emit()
@@ -157,8 +157,11 @@ class TCPWorker(QObject):
         if not self.socket:
             return
         try:
-            with self.send_mutex:
+            self.send_mutex.lock()
+            try:
                 self.socket.sendall(packet)
+            finally:
+                self.send_mutex.unlock()
         except OSError as exc:
             self.logger.exception("Send error: %s", exc)
             self.dispatcher.error.emit(str(exc))
@@ -198,7 +201,12 @@ class TCPWorker(QObject):
                 self.session_token = packet.get("session_token")
                 self.username = packet.get("username") or self.username
                 room = packet.get("room", "global")
-                self.dispatcher.session_restored.emit(self.username, room)
+                # Always raise both login_success and session_restored so
+                # consumers can pick the variant they need; reconnect users
+                # will have already supplied a session token, while fresh
+                # logins start with self.session_token == None.
+                self.dispatcher.login_success.emit(self.username or "")
+                self.dispatcher.session_restored.emit(self.username or "", room or "global")
 
             elif packet_type == PacketType.MESSAGE.value:
                 room = packet.get("room", "global")
@@ -245,7 +253,13 @@ class TCPWorker(QObject):
                 room = packet.get("room") or packet.get("sender", "direct")
                 filename = packet.get("filename", "unknown")
                 file_path = packet.get("file_path", "")
+                transfer_id = packet.get("transfer_id", filename)
+                filesize = int(packet.get("filesize") or 0)
+                self.dispatcher.file_transfer_complete.emit(transfer_id)
                 self.dispatcher.image_received.emit(room, filename, file_path)
+                # Also surface as a transfer-start so panels not aware of
+                # the upload still see it appear.
+                self.dispatcher.file_transfer_started.emit(transfer_id, filename, filesize)
 
             elif packet_type == PacketType.TRANSFER_PROGRESS.value:
                 transfer_id = packet.get("transfer_id", "unknown")
@@ -301,13 +315,24 @@ class TCPController(QObject):
 
     def stop(self) -> None:
         """Stop TCP worker thread."""
-        if self.worker:
-            self.worker.running = False
-            self.worker.disconnect()
-        if self.thread:
-            self.thread.quit()
-            self.thread.wait()
-            self.thread = None
+        worker = self.worker
+        thread = self.thread
+        if worker:
+            worker.running = False
+            try:
+                if worker.socket:
+                    worker.socket.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+            try:
+                if worker.socket:
+                    worker.socket.close()
+            except OSError:
+                pass
+        if thread:
+            thread.quit()
+            thread.wait(2000)
+        self.thread = None
         self.worker = None
         self.logger.info("TCP worker thread stopped")
 

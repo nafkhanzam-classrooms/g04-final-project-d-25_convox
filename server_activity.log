@@ -22,3 +22,20 @@ Traceback (most recent call last):
     ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 TypeError: ConvoxService.send_packet() got multiple values for argument 'username'
 2026-06-12 10:52:57 [INFO] Server closed connection
+2026-06-12 12:53:59 [INFO] Starting Convox GUI Application
+2026-06-12 12:54:09 [INFO] TCP worker thread started
+2026-06-12 12:54:09 [INFO] Sent LOGIN for fabian
+2026-06-12 12:54:11 [ERROR] Connection failed: [WinError 10061] No connection could be made because the target machine actively refused it
+2026-06-12 12:54:11 [INFO] TCP worker thread stopped
+2026-06-12 12:54:22 [INFO] TCP worker thread started
+2026-06-12 12:54:22 [ERROR] Send error: [WinError 10057] A request to send or receive data was disallowed because the socket is not connected and (when sending on a datagram socket using a sendto call) no address was supplied
+Traceback (most recent call last):
+  File "C:\Users\sever\Documents\Project_Coolyeah\SMST 4\Progjar\gui\controllers\tcp_controller.py", line 162, in send_raw
+    self.socket.sendall(packet)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^
+OSError: [WinError 10057] A request to send or receive data was disallowed because the socket is not connected and (when sending on a datagram socket using a sendto call) no address was supplied
+2026-06-12 12:54:22 [ERROR] Connection failed: [WinError 10038] An operation was attempted on something that is not a socket
+2026-06-12 12:54:22 [INFO] TCP worker thread stopped
+2026-06-12 12:54:22 [INFO] TCP worker thread stopped
+2026-06-12 12:54:26 [INFO] Sent RECONNECT
+2026-06-12 12:54:27 [INFO] TCP worker thread stopped

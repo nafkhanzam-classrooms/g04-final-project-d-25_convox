@@ -1,164 +1,140 @@
-"""Login window for Convox GUI."""
+"""Login window for the Convox desktop client."""
 
-from PyQt6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
-    QPushButton, QMessageBox, QProgressBar, QCheckBox
-)
+from typing import Optional
+
 from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QFont, QIcon
+from PyQt6.QtGui import QFont
+from PyQt6.QtWidgets import (
+    QCheckBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMainWindow,
+    QMessageBox,
+    QProgressBar,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 
-from gui.controllers.tcp_controller import TCPController
 from gui.controllers.event_dispatcher import get_dispatcher
+from gui.controllers.tcp_controller import TCPController
+from gui.styles import colors
 from gui.windows.dashboard_window import DashboardWindow
 from utils.logger import get_logger
 
+try:
+    from client.config import SERVER_HOST, SERVER_PORT
+except ImportError:  # pragma: no cover - fallback for unusual layouts
+    SERVER_HOST, SERVER_PORT = "127.0.0.1", 9000
+
 
 class LoginWindow(QMainWindow):
-    """Login window for user authentication."""
+    """Username + reconnect token entry window."""
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
         self.logger = get_logger("LoginWindow")
-        self.tcp_controller = TCPController()
+        self.tcp_controller = TCPController(host=SERVER_HOST, port=SERVER_PORT)
         self.dispatcher = get_dispatcher()
-        self.dashboard: DashboardWindow = None
-        self.session_token: str = None
+        self.dashboard: Optional[DashboardWindow] = None
+        self.session_token: Optional[str] = None
+        self._completed: bool = False
 
-        self.init_ui()
-        self.connect_signals()
-        self.setWindowTitle("Convox - Login")
-        self.setGeometry(100, 100, 500, 300)
+        self.setWindowTitle("Convox - Sign In")
+        self.setFixedSize(440, 480)
+        self._build()
+        self._wire_signals()
 
-    def init_ui(self) -> None:
-        """Initialize UI components."""
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
+    # ---------------------------------------------------------------- layout
+    def _build(self) -> None:
+        central = QWidget()
+        self.setCentralWidget(central)
 
-        layout = QVBoxLayout()
-        layout.setSpacing(15)
-        layout.setContentsMargins(30, 30, 30, 30)
+        outer = QVBoxLayout(central)
+        outer.setContentsMargins(40, 36, 40, 36)
+        outer.setSpacing(14)
 
-        # Title
         title = QLabel("CONVOX")
-        title_font = QFont()
-        title_font.setPointSize(24)
-        title_font.setBold(True)
-        title.setFont(title_font)
+        title.setProperty("role", "title")
+        font = QFont()
+        font.setPointSize(28)
+        font.setBold(True)
+        title.setFont(font)
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(title)
+        outer.addWidget(title)
 
         subtitle = QLabel("Realtime Communication Platform")
+        subtitle.setProperty("role", "subtitle")
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(subtitle)
+        outer.addWidget(subtitle)
 
-        layout.addSpacing(20)
+        outer.addSpacing(18)
 
-        # Username input
-        layout.addWidget(QLabel("Username:"))
+        outer.addWidget(self._label("Username"))
         self.username_input = QLineEdit()
-        self.username_input.setPlaceholderText("Enter your username")
+        self.username_input.setPlaceholderText("e.g. fabian")
         self.username_input.returnPressed.connect(self.attempt_login)
-        layout.addWidget(self.username_input)
+        outer.addWidget(self.username_input)
 
-        # Session token for reconnect
-        layout.addWidget(QLabel("Session Token (optional):"))
+        outer.addWidget(self._label("Session Token (optional)"))
         self.session_input = QLineEdit()
-        self.session_input.setPlaceholderText("Leave blank for new login, or paste token to reconnect")
+        self.session_input.setPlaceholderText("Paste a token here to reconnect to a previous session")
         self.session_input.setEchoMode(QLineEdit.EchoMode.Password)
-        layout.addWidget(self.session_input)
+        outer.addWidget(self.session_input)
 
-        layout.addSpacing(10)
-
-        # Remember me checkbox
         self.remember_checkbox = QCheckBox("Remember session token")
-        layout.addWidget(self.remember_checkbox)
+        outer.addWidget(self.remember_checkbox)
 
-        layout.addSpacing(20)
+        outer.addSpacing(6)
 
-        # Progress bar
+        self.server_status = QLabel(f"Server: {SERVER_HOST}:{SERVER_PORT}  •  ready")
+        self.server_status.setProperty("role", "muted")
+        self.server_status.setStyleSheet(f"color: {colors.TEXT_MUTED};")
+        self.server_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        outer.addWidget(self.server_status)
+
         self.progress_bar = QProgressBar()
+        self.progress_bar.setRange(0, 0)
         self.progress_bar.setVisible(False)
-        self.progress_bar.setMaximum(0)  # Indeterminate progress
-        layout.addWidget(self.progress_bar)
+        outer.addWidget(self.progress_bar)
 
-        # Status label
-        self.status_label = QLabel("")
-        self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(self.status_label)
-
-        layout.addSpacing(20)
-
-        # Login button
-        button_layout = QHBoxLayout()
-        self.login_button = QPushButton("Login")
+        button_row = QHBoxLayout()
+        button_row.setSpacing(8)
+        self.login_button = QPushButton("Connect")
         self.login_button.setMinimumHeight(40)
         self.login_button.clicked.connect(self.attempt_login)
-        button_layout.addWidget(self.login_button)
-        layout.addLayout(button_layout)
+        button_row.addWidget(self.login_button)
+        outer.addLayout(button_row)
 
-        layout.addStretch()
-        central_widget.setLayout(layout)
+        outer.addStretch(1)
 
-        # Apply styling
-        self.setStyleSheet("""
-            QMainWindow {
-                background-color: #2b2b2b;
-            }
-            QLabel {
-                color: #ffffff;
-                font-size: 12px;
-            }
-            QLineEdit {
-                background-color: #1e1e1e;
-                color: #ffffff;
-                border: 1px solid #404040;
-                border-radius: 4px;
-                padding: 8px;
-                font-size: 12px;
-            }
-            QLineEdit:focus {
-                border: 1px solid #0078d4;
-            }
-            QPushButton {
-                background-color: #0078d4;
-                color: #ffffff;
-                border: none;
-                border-radius: 4px;
-                font-weight: bold;
-                font-size: 13px;
-            }
-            QPushButton:hover {
-                background-color: #1084d7;
-            }
-            QPushButton:pressed {
-                background-color: #005a9e;
-            }
-            QCheckBox {
-                color: #ffffff;
-            }
-        """)
+    def _label(self, text: str) -> QLabel:
+        label = QLabel(text)
+        label.setProperty("role", "section")
+        label.setStyleSheet(f"color: {colors.TEXT_SECONDARY}; font-weight: 600;")
+        return label
 
-    def connect_signals(self) -> None:
-        """Connect event signals."""
+    # ---------------------------------------------------------------- signals
+    def _wire_signals(self) -> None:
         self.dispatcher.login_success.connect(self.on_login_success)
         self.dispatcher.login_failed.connect(self.on_login_failed)
         self.dispatcher.session_restored.connect(self.on_session_restored)
         self.dispatcher.connection_error.connect(self.on_connection_error)
         self.dispatcher.error.connect(self.on_error)
 
+    # --------------------------------------------------------------- actions
     def attempt_login(self) -> None:
-        """Attempt to login or reconnect."""
         username = self.username_input.text().strip()
         session_token = self.session_input.text().strip()
 
-        if not username:
-            QMessageBox.warning(self, "Validation Error", "Please enter a username")
+        if not username and not session_token:
+            QMessageBox.warning(self, "Missing Information", "Please enter a username or session token.")
             return
 
         self.login_button.setEnabled(False)
         self.progress_bar.setVisible(True)
-        self.status_label.setText("Connecting to server...")
-
+        self.server_status.setText("Connecting…")
         self.tcp_controller.start()
 
         if session_token:
@@ -167,49 +143,59 @@ class LoginWindow(QMainWindow):
         else:
             self.tcp_controller.login(username)
 
+    # -------------------------------------------------------------- handlers
     def on_login_success(self, username: str) -> None:
-        """Handle successful login."""
-        self.logger.info("Login successful for %s", username)
-        self.status_label.setText(f"Welcome, {username}!")
-
-        QTimer.singleShot(1000, self.open_dashboard)
+        if self._completed:
+            return
+        self._completed = True
+        if username:
+            self.username_input.setText(username)
+        self.logger.info("Login success for %s", username or "<unknown>")
+        self.server_status.setText("Authenticated")
+        QTimer.singleShot(400, self.open_dashboard)
 
     def on_session_restored(self, username: str, room: str) -> None:
-        """Handle successful session restoration."""
-        self.logger.info("Session restored for %s in room %s", username, room)
-        self.status_label.setText(f"Session restored! Welcome back, {username}!")
+        if self._completed:
+            return
+        self._completed = True
+        if username:
+            self.username_input.setText(username)
+        self.logger.info("Session restored for %s in %s", username, room)
+        self.server_status.setText(f"Reconnected to {room}")
+        QTimer.singleShot(400, self.open_dashboard)
 
-        QTimer.singleShot(1000, self.open_dashboard)
+    def on_login_failed(self, message: str) -> None:
+        self._reset_after_failure()
+        QMessageBox.critical(self, "Login Failed", message)
 
-    def on_login_failed(self, error_message: str) -> None:
-        """Handle login failure."""
-        self.logger.warning("Login failed: %s", error_message)
+    def on_connection_error(self, message: str) -> None:
+        self._reset_after_failure()
+        QMessageBox.critical(self, "Connection Error", message)
+
+    def on_error(self, message: str) -> None:
+        if self._completed:
+            return
+        self._reset_after_failure()
+        QMessageBox.warning(self, "Server Message", message)
+
+    def _reset_after_failure(self) -> None:
         self.progress_bar.setVisible(False)
         self.login_button.setEnabled(True)
-        QMessageBox.critical(self, "Login Failed", error_message)
-
-    def on_connection_error(self, error_message: str) -> None:
-        """Handle connection error."""
-        self.logger.error("Connection error: %s", error_message)
-        self.progress_bar.setVisible(False)
-        self.login_button.setEnabled(True)
-        QMessageBox.critical(self, "Connection Error", error_message)
-
-    def on_error(self, error_message: str) -> None:
-        """Handle general errors."""
-        self.logger.error("Error: %s", error_message)
-        self.progress_bar.setVisible(False)
-        self.login_button.setEnabled(True)
-        QMessageBox.critical(self, "Error", error_message)
+        self.server_status.setText(f"Server: {SERVER_HOST}:{SERVER_PORT}  •  ready")
+        # Stop the worker so the next attempt opens a fresh socket.
+        self.tcp_controller.stop()
 
     def open_dashboard(self) -> None:
-        """Open dashboard window."""
-        username = self.username_input.text().strip()
-        self.dashboard = DashboardWindow(self.tcp_controller, username, self.session_token)
+        username = self.username_input.text().strip() or "user"
+        token = self.session_token or (
+            self.tcp_controller.worker.session_token if self.tcp_controller.worker else None
+        )
+        self.dashboard = DashboardWindow(self.tcp_controller, username, token)
         self.dashboard.show()
         self.close()
 
+    # --------------------------------------------------------------- close
     def closeEvent(self, event) -> None:
-        """Clean up on window close."""
-        self.tcp_controller.stop()
+        if not self._completed:
+            self.tcp_controller.stop()
         super().closeEvent(event)
