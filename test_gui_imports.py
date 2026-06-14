@@ -1,80 +1,83 @@
 #!/usr/bin/env python3
-"""Quick validation of Phase 5 GUI module imports and architecture."""
+"""Quick validation of GUI module imports and architecture."""
 
 import sys
 
-def test_imports():
-    """Test that all GUI modules can be imported."""
+
+def test_imports() -> bool:
     try:
         print("Testing GUI module imports...")
 
-        # Event dispatcher
-        from gui.controllers.event_dispatcher import get_dispatcher, EventDispatcher
+        # Controllers
+        from gui.controllers.event_dispatcher import EventDispatcher, get_dispatcher  # noqa: F401
         print("✓ event_dispatcher.py")
-
-        # TCP controller
-        from gui.controllers.tcp_controller import TCPController, TCPWorker
+        from gui.controllers.tcp_controller import TCPController, TCPWorker  # noqa: F401
         print("✓ tcp_controller.py")
+        from gui.controllers.udp_voice_controller import UDPVoiceController  # noqa: F401
+        print("✓ udp_voice_controller.py")
+        from gui.controllers.gui_state_manager import GuiStateManager  # noqa: F401
+        print("✓ gui_state_manager.py")
 
         # Models
-        from gui.models.app_model import ApplicationModel, User, Room, Message, Friend, FileTransfer
+        from gui.models.app_model import (  # noqa: F401
+            ApplicationModel,
+            FileTransfer,
+            Friend,
+            Message,
+            Room,
+            User,
+            UserStatus,
+        )
         print("✓ app_model.py")
 
-        # Windows
-        from gui.windows.login_window import LoginWindow
-        print("✓ login_window.py")
+        # Styles
+        from gui.styles import colors  # noqa: F401
+        from gui.styles.theme import apply_theme, load_theme  # noqa: F401
+        print("✓ styles/theme.py + colors.py")
 
-        from gui.windows.dashboard_window import DashboardWindow
-        print("✓ dashboard_window.py")
+        # Windows
+        from gui.windows.login_window import LoginWindow  # noqa: F401
+        from gui.windows.dashboard_window import DashboardWindow  # noqa: F401
+        from gui.windows.chat_window import ChatWindow  # noqa: F401
+        print("✓ windows: login_window.py, dashboard_window.py, chat_window.py")
 
         # Widgets
-        from gui.widgets.room_sidebar import RoomSidebar
-        print("✓ room_sidebar.py")
+        from gui.widgets.room_sidebar import RoomSidebar  # noqa: F401
+        from gui.widgets.chat_area import ChatArea  # noqa: F401
+        from gui.widgets.message_bubble import MessageBubble  # noqa: F401
+        from gui.widgets.online_users import OnlineUserPanel  # noqa: F401
+        from gui.widgets.friend_panel import FriendPanel  # noqa: F401
+        from gui.widgets.voice_controls import VoiceControls  # noqa: F401
+        from gui.widgets.upload_widget import UploadWidget  # noqa: F401
+        from gui.widgets.notification_widget import NotificationWidget  # noqa: F401
+        print("✓ widgets")
 
-        from gui.widgets.chat_area import ChatArea
-        print("✓ chat_area.py")
-
-        from gui.widgets.online_users import OnlineUserPanel
-        print("✓ online_users.py")
-
-        from gui.widgets.voice_controls import VoiceControls
-        print("✓ voice_controls.py")
-
-        from gui.widgets.upload_widget import UploadWidget
-        print("✓ upload_widget.py")
-
-        from gui.widgets.notification_widget import NotificationWidget
-        print("✓ notification_widget.py")
-
-        # Main app
-        from gui.app import ConvoxGuiApp
+        # App
+        from gui.app import ConvoxGuiApp  # noqa: F401
         print("✓ app.py")
 
-        print("\n✅ All imports successful!")
-        print("\nArchitecture Summary:")
-        print("  - Event Dispatcher: Central signal hub for realtime GUI updates")
-        print("  - TCP Controller: Threaded TCP communication with server")
-        print("  - Application Model: Client-side state management")
-        print("  - Windows: Login, Dashboard (main UI)")
-        print("  - Widgets: Chat, Rooms, Users, Voice, Upload, Notifications")
-        print("\nSignal-Slot Flow:")
-        print("  TCP Worker Thread → Event Dispatcher → GUI Widgets")
-        print("  (non-blocking, thread-safe communication)")
-        print("\n✅ PyQt6 GUI Phase 5 ready for UI testing!")
+        # Auth (server-side, used to ensure protocol stays in sync)
+        from server.auth import AuthService, hash_password, verify_password  # noqa: F401
+        print("✓ server/auth.py")
 
+        from protocol.packet import PacketType
+        for required in ("LOGIN", "REGISTER", "AUTH_SUCCESS", "AUTH_FAILED", "SESSION_ACK"):
+            assert hasattr(PacketType, required), f"missing PacketType.{required}"
+        print("✓ packet types: LOGIN/REGISTER/AUTH_SUCCESS/AUTH_FAILED/SESSION_ACK")
+
+        print("\n✅ All imports successful!")
         return True
     except ImportError as exc:
         print(f"\n❌ Import failed: {exc}")
-        print("\nNote: PyQt6 must be installed to run GUI")
-        print("Install with: pip install PyQt6")
+        print("Install GUI deps with: pip install PyQt6")
         return False
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         print(f"\n❌ Error: {exc}")
         import traceback
+
         traceback.print_exc()
         return False
 
 
 if __name__ == "__main__":
-    success = test_imports()
-    sys.exit(0 if success else 1)
+    sys.exit(0 if test_imports() else 1)

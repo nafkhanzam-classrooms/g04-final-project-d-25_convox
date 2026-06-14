@@ -43,12 +43,29 @@ class TCPWorker(QObject):
             self.dispatcher.connection_error.emit(error_msg)
             return False
 
-    def login(self, username: str) -> None:
+    def login(self, username: str, password: str = "") -> None:
         """Send login packet."""
         self.username = username
-        packet = build_packet(PacketType.LOGIN, sender=username)
+        packet = build_packet(
+            PacketType.LOGIN,
+            sender=username,
+            username=username,
+            password=password,
+        )
         self.send_raw(packet)
         self.logger.info("Sent LOGIN for %s", username)
+
+    def register_account(self, username: str, password: str) -> None:
+        """Send registration packet."""
+        self.username = username
+        packet = build_packet(
+            PacketType.REGISTER,
+            sender=username,
+            username=username,
+            password=password,
+        )
+        self.send_raw(packet)
+        self.logger.info("Sent REGISTER for %s", username)
 
     def reconnect(self, session_token: str) -> None:
         """Send reconnect packet."""
@@ -197,8 +214,32 @@ class TCPWorker(QObject):
         packet_type = packet.get("type")
 
         try:
-            if packet_type == PacketType.SESSION_ACK.value:
-                self.session_token = packet.get("session_token")
+            if packet_type == PacketType.AUTH_SUCCESS.value:
+                self.session_token = packet.get("session_token") or self.session_token
+                self.username = packet.get("username") or self.username
+                room = packet.get("room", "global")
+                # AUTH_SUCCESS arrives both for registration (no token)
+                # and for login. Only emit login_success when we have a
+                # session token so the GUI can move on to the dashboard;
+                # registration acks are surfaced via the system message.
+                if self.session_token:
+                    self.dispatcher.login_success.emit(self.username or "")
+                    self.dispatcher.session_restored.emit(
+                        self.username or "", room or "global"
+                    )
+                else:
+                    self.dispatcher.register_success.emit(self.username or "")
+                    self.dispatcher.system_message.emit(
+                        "auth",
+                        packet.get("message", "Account created. You may now sign in."),
+                    )
+
+            elif packet_type == PacketType.AUTH_FAILED.value:
+                message = packet.get("message", "Authentication failed.")
+                self.dispatcher.login_failed.emit(message)
+
+            elif packet_type == PacketType.SESSION_ACK.value:
+                self.session_token = packet.get("session_token") or self.session_token
                 self.username = packet.get("username") or self.username
                 room = packet.get("room", "global")
                 # Always raise both login_success and session_restored so
@@ -336,10 +377,15 @@ class TCPController(QObject):
         self.worker = None
         self.logger.info("TCP worker thread stopped")
 
-    def login(self, username: str) -> None:
+    def login(self, username: str, password: str = "") -> None:
         """Queue login request."""
         if self.worker:
-            self.worker.login(username)
+            self.worker.login(username, password)
+
+    def register_account(self, username: str, password: str) -> None:
+        """Queue registration request."""
+        if self.worker:
+            self.worker.register_account(username, password)
 
     def reconnect(self, session_token: str) -> None:
         """Queue reconnect request."""

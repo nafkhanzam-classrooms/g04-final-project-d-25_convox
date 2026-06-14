@@ -15,6 +15,7 @@ from protocol.chunking.chunk_manager import ChunkManager, generate_transfer_id
 from protocol.packet import PacketType
 from rooms.room_manager import RoomManager
 from scheduler.scheduled_broadcast import ScheduledBroadcastRunner
+from server.auth import AuthService
 from server.connection_manager import ConnectionManager
 from server.session_manager import SessionManager
 from storage.storage_manager import StorageManager
@@ -35,6 +36,7 @@ class ConvoxService:
         self.chunk_manager = ChunkManager()
         self.scheduler = ScheduledBroadcastRunner(self.database, self.dispatch_scheduled_broadcast)
         self.session_manager = SessionManager(self.database)
+        self.auth_service = AuthService(self.database)
         self.storage_manager = StorageManager()
         self.voice_room_manager = VoiceRoomManager()
         self.user_rooms: Dict[str, str] = {}

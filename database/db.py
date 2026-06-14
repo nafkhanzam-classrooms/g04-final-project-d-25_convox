@@ -144,6 +144,53 @@ class Database:
             )
             """
         )
+        self._migrate_users_password()
+
+    # ---------------------------------------------------------------- migrations
+    def _migrate_users_password(self) -> None:
+        """Add the ``password_hash`` column to ``users`` if missing.
+
+        Older Convox databases were created before authentication
+        existed; legacy rows are kept so reconnect tokens still resolve,
+        and they will simply require re-registration on the next login
+        attempt.
+        """
+        cursor = self.execute("PRAGMA table_info(users)")
+        columns = {row["name"] for row in cursor.fetchall()}
+        if "password_hash" not in columns:
+            self.execute("ALTER TABLE users ADD COLUMN password_hash TEXT")
+
+    # ------------------------------------------------------------------- auth
+    def set_user_password(self, username: str, password_hash: str) -> int:
+        """Insert (or update) the password hash for ``username``.
+
+        Returns the user id. Idempotent so we can be called from both
+        registration and password-reset flows.
+        """
+        if not username:
+            raise ValueError("Username cannot be empty")
+        existing = self.execute(
+            "SELECT id FROM users WHERE username = ?", (username,)
+        ).fetchone()
+        if existing:
+            self.execute(
+                "UPDATE users SET password_hash = ? WHERE username = ?",
+                (password_hash, username),
+            )
+            return existing["id"]
+        cursor = self.execute(
+            "INSERT INTO users (username, created_at, status, password_hash) VALUES (?, ?, ?, ?)",
+            (username, datetime.utcnow().isoformat(), "OFFLINE", password_hash),
+        )
+        return cursor.lastrowid
+
+    def get_user_password_hash(self, username: str) -> Optional[str]:
+        row = self.execute(
+            "SELECT password_hash FROM users WHERE username = ?", (username,)
+        ).fetchone()
+        if not row:
+            return None
+        return row["password_hash"]
 
     def get_or_create_user(self, username: str) -> int:
         if not username:

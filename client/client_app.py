@@ -30,12 +30,60 @@ class ConvoxClient:
         self.logger.info("Connected to server at %s:%s", self.server_host, self.server_port)
 
     def login(self) -> None:
-        while not self.username:
-            candidate = input("Enter username: ").strip()
-            if candidate:
-                self.username = candidate
-        packet = build_packet(PacketType.LOGIN, sender=self.username)
-        self.socket.sendall(packet)
+        """Run the interactive auth handshake.
+
+        Asks for an existing username + password (or registration if the
+        account doesn't exist yet), waits for ``AUTH_SUCCESS`` /
+        ``AUTH_FAILED`` synchronously over the same socket, then starts
+        the receiver thread for the rest of the session.
+        """
+        while True:
+            username = input("Username: ").strip()
+            password = input("Password: ")
+            if not username or not password:
+                print("Username and password are required.")
+                continue
+            choice = input("Account exists? [Y/n] ").strip().lower() or "y"
+            if choice.startswith("n"):
+                packet = build_packet(
+                    PacketType.REGISTER,
+                    sender=username,
+                    username=username,
+                    password=password,
+                )
+                self.socket.sendall(packet)
+                response = receive_packet(self.socket)
+                if response and response.get("type") == PacketType.AUTH_SUCCESS.value:
+                    print(f"[AUTH] {response.get('message', 'Account created.')}")
+                    # Continue to login below
+                else:
+                    msg = (response or {}).get("message", "Registration failed.")
+                    print(f"[AUTH] {msg}")
+                    continue
+
+            # LOGIN
+            packet = build_packet(
+                PacketType.LOGIN,
+                sender=username,
+                username=username,
+                password=password,
+            )
+            self.socket.sendall(packet)
+            response = receive_packet(self.socket)
+            if not response:
+                print("Server closed the connection during authentication.")
+                return
+            response_type = response.get("type")
+            if response_type == PacketType.AUTH_SUCCESS.value:
+                self.username = response.get("username") or username
+                self.session_token = response.get("session_token")
+                self.current_room = response.get("room", "global")
+                print(f"[AUTH] Signed in as {self.username}.")
+                # The server sends a SESSION_ACK right after AUTH_SUCCESS;
+                # let the regular receiver loop pick that up.
+                break
+            print(f"[AUTH] {response.get('message', 'Authentication failed.')}")
+
         self.running = True
         self.receiver_thread = threading.Thread(target=self.receive_loop, daemon=True)
         self.receiver_thread.start()
@@ -56,14 +104,19 @@ class ConvoxClient:
         message = packet.get("message", "")
         timestamp = packet.get("timestamp", "")
 
-        if packet_type == PacketType.SESSION_ACK.value:
+        if packet_type == PacketType.AUTH_SUCCESS.value:
+            self.session_token = packet.get("session_token") or self.session_token
+            self.username = packet.get("username") or self.username
+            self.current_room = packet.get("room", self.current_room)
+            print(f"[AUTH] {packet.get('message', 'Authenticated.')}")
+        elif packet_type == PacketType.AUTH_FAILED.value:
+            print(f"[AUTH] {packet.get('message', 'Authentication failed.')}")
+        elif packet_type == PacketType.SESSION_ACK.value:
             self.session_token = packet.get("session_token")
             self.username = packet.get("username") or self.username
             self.current_room = packet.get("room", "global")
             if self.session_token:
-                print(f"[SESSION] Session restored: {self.session_token[:16]}...")
-            else:
-                print("[SESSION] Session restored")
+                print(f"[SESSION] Session token: {self.session_token[:16]}...")
         elif packet_type == PacketType.MESSAGE.value:
             print(f"[{timestamp}] [{room}] {sender}: {message}")
         elif packet_type == PacketType.PRIVATE_MESSAGE.value:

@@ -2,3 +2,22 @@
 *.log
 logs/
 server_activity.log
+
+# Python build artifacts
+__pycache__/
+*.pyc
+*.pyo
+
+# Local SQLite database (re-created on first run)
+database/convox.db
+
+# Storage uploaded by users at runtime
+storage/uploads/
+storage/downloads/
+storage/temp/
+
+# Virtual envs / IDE config
+.venv/
+venv/
+.idea/
+.vscode/

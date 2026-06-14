@@ -328,7 +328,11 @@ class DashboardWindow(QMainWindow):
         self.notifications.show_notification("Error", message)
 
     def _on_disconnected(self) -> None:
-        self.notifications.show_notification("Disconnected", "Lost connection to the Convox server.")
+        self.notifications.show_notification(
+            "Disconnected",
+            "Lost connection to the Convox server. You can reconnect using your "
+            "session token from the login screen.",
+        )
 
     def _on_file_selected(self, path: str) -> None:
         # Phase 1 GUI surfaces uploads through the controller. Backend

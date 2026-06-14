@@ -15,6 +15,7 @@ class EventDispatcher(QObject):
     # Authentication events
     login_success = pyqtSignal(str)  # username
     login_failed = pyqtSignal(str)  # error message
+    register_success = pyqtSignal(str)  # username
     session_restored = pyqtSignal(str, str)  # username, room
 
     # Message events
